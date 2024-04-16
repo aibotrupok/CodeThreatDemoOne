@@ -1,15 +1,85 @@
-from flask import *
+import os
+
+from flask import (
+    Flask,
+    render_template,
+    request,
+    url_for,
+    redirect,
+    session,
+    render_template_string
+)
+from flask.ext.session import Session
 
 app = Flask(__name__)
 
-@app.route('/')
-def home():
-    return ("<body style='background-color: #9dffff; height=100%; display:flex;'>"
-            "<div style='font-family: Poppins; display:flex; flex-direction: column; align-self: center; width: 100%'>"
-            "<h1 style='text-align:center'>Welcome to Jenkins CI/CD Pipeline for Python Application</h1>"
-            "<h2 style='text-align:center'>Also with SAST Security Scan</h2>"
-            "</div>"
-            "</body>")
 
-if __name__ == '__main__':
-    app.run(debug=True, host="0.0.0.0", port=5000)
+execfile('flag.py')
+execfile('key.py')
+
+FLAG = flag
+app.secret_key = key
+
+
+@app.route("/golem", methods=["GET", "POST"])
+def golem():
+    if request.method != "POST":
+        return redirect(url_for("index"))
+
+    golem = request.form.get("golem") or None
+
+    if golem is not None:
+        golem = golem.replace(".", "").replace(
+            "_", "").replace("{", "").replace("}", "")
+
+    if "golem" not in session or session['golem'] is None:
+        session['golem'] = golem
+
+    template = None
+
+    if session['golem'] is not None:
+        template = '''{% % extends "layout.html" % %}
+		{% % block body % %}
+		<h1 > Golem Name < /h1 >
+		<div class ="row >
+		<div class = "col-md-6 col-md-offset-3 center" >
+		Hello: % s, why you don't look at our <a href=' / article?name = article'> article < /a >?
+		< / div >
+		< / div >
+		{% % endblock % %}
+		''' % session['golem']
+
+        print
+
+        session['golem'] = None
+
+    return render_template_string(template)
+
+
+@app.route("/", methods=["GET"])
+def index():
+    return render_template("main.html")
+
+
+@app.route('/article', methods=['GET'])
+def article():
+
+    error = 0
+
+    if 'name' in request.args:
+        page = request.args.get('name')
+    else:
+        page = 'article'
+
+    if page.find('flag') >= 0:
+        page = 'notallowed.txt'
+
+    try:
+        template = open('/home/golem/articles/{}'.format(page)).read()
+    except Exception as e:
+        template = e
+
+    return render_template('article.html', template=template)
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', debug=False)
